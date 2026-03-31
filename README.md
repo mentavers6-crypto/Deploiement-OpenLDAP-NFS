@@ -378,7 +378,16 @@ id m.naittaouel
 sudo systemctl restart sssd
 su - m.naittaouel
 ```
+### Déléguer les droits d'administration (sudo) :
 
+```bash
+sudo visudo
+```
+### Ajouter la ligne :
+
+```bash
+%Reseaux ALL=(ALL:ALL) ALL
+```
 ---
 
 ## Partie 3 : NFS
