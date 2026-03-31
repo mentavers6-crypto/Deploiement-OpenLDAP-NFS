@@ -1,64 +1,143 @@
-# Procédure d'installation et de configuration OpenLDAP
+Voici ton document prêt à être copié directement dans GitHub en **Markdown**, avec structure propre, correction linguistique et respect strict de toutes les étapes :
 
 ---
 
-## Phase 1 : Préparation de l'environnement
+````markdown
+# Guide Complet d'Administration : Déploiement d'OpenLDAP, phpLDAPadmin et NFS
 
-### Création de la Machine Virtuelle
-4 Go de RAM et 30 Go de disque, avec un adaptateur réseau en mode **Custom (VMnet8 - NAT)**.
+---
 
+## Partie 1 : Serveur OpenLDAP (Fedora)
+
+### Phase 1 : Préparation de l'environnement
+
+#### Création de la Machine Virtuelle
+Allouez **4 Go de RAM** et **30 Go de disque**.  
+Configurez la carte réseau avec le choix : `Custom (VMnet8 - NAT)`.
+
+#### Mise à jour du système
 ```bash
 sudo dnf update -y
-Connexion SSH
+````
+
+#### Connexion SSH
+
+Vérifiez votre IP et le service SSH :
+
+```bash
 ip a
 sudo systemctl enable sshd
 sudo systemctl status sshd
+```
 
-Depuis PowerShell Windows :
+**Note pour Windows (PowerShell)** :
 
+```bash
 ssh ton_utilisateur@adresse_IP_de_la_VM
-# Exemple
+# Exemple :
 ssh moha@192.168.85.39
+```
 
-⚠️ Attention : avant cela, désactiver le firewall Windows :
+Avant cela :
 
+```bash
 firewall.cpl
 ping 192.168.85.139
-Phase 2 : Préparation de l'identité du serveur et Installation
-Définir le nom d'hôte (Hostname)
+```
+
+---
+
+### Phase 2 : Préparation de l'identité du serveur et installation
+
+#### Définir le nom d'hôte (Hostname)
+
+```bash
 sudo hostnamectl set-hostname ldap.cmc.agadir
 hostname -f
-Configurer la résolution locale (/etc/hosts)
+```
+
+#### Configurer la résolution locale (/etc/hosts)
+
+```bash
 echo "192.168.85.144 ldap.cmc.agadir ldap" | sudo tee -a /etc/hosts
-Installation des paquets OpenLDAP
+```
+
+#### Installation des paquets OpenLDAP
+
+```bash
 sudo dnf install openldap-servers openldap-clients -y
-Démarrage du service
+```
+
+#### Démarrage du service
+
+```bash
 sudo systemctl enable --now slapd
 systemctl status slapd
-Phase 3 : Configuration du mot de passe de l'administrateur global
-Générer le mot de passe crypté
+```
+
+---
+
+### Phase 3 : Configuration du mot de passe de l'administrateur global
+
+#### Générer le mot de passe crypté
+
+```bash
 slappasswd
+```
+
+#### Créer le fichier de configuration
+
+```bash
 nano rootpw.ldif
+```
+
+Contenu :
+
+```ldif
 dn: olcDatabase={0}config,cn=config
 changetype: modify
 add: olcRootPW
 olcRootPW: {SSHA}COLLE_TON_HASH_ICI
-Exemple
+```
+
+Exemple :
+
+```ldif
 dn: olcDatabase={0}config,cn=config
 changetype: modify
 add: olcRootPW
 olcRootPW: {SSHA}Vmjk0audIlbZLCC8s93ZEumkhg2Xd4MB
-Injection de la configuration
+```
+
+#### Injecter la configuration
+
+```bash
 sudo ldapmodify -Y EXTERNAL -H ldapi:/// -f rootpw.ldif
-Phase 4 : Importation des schémas de base
+```
+
+---
+
+### Phase 4 : Importation des schémas de base
+
+```bash
 sudo ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/cosine.ldif
 sudo ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/nis.ldif
 sudo ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/inetorgperson.ldif
-Phase 5 : Configuration de ton domaine
+```
+
+---
+
+### Phase 5 : Configuration du domaine
+
+#### Créer le fichier de domaine
+
+```bash
 nano db.ldif
+```
 
-Copier-coller :
+Contenu :
 
+```ldif
 dn: olcDatabase={2}mdb,cn=config
 changetype: modify
 replace: olcSuffix
@@ -69,12 +148,23 @@ olcRootDN: cn=Manager,dc=cmc,dc=agadir
 -
 add: olcRootPW
 olcRootPW: {SSHA}Vmjk0audIlbZLCC8s93ZEumkhg2Xd4MB
+```
 
-Injection :
+#### Injecter la configuration
 
+```bash
 sudo ldapmodify -Y EXTERNAL -H ldapi:/// -f db.ldif
-Phase 6 : Création de la structure de base de l'annuaire
+```
+
+---
+
+### Phase 6 : Création de la structure de base de l'annuaire
+
+```bash
 nano base.ldif
+```
+
+```ldif
 dn: dc=cmc,dc=agadir
 objectClass: top
 objectClass: dcObject
@@ -94,10 +184,22 @@ ou: Utilisateurs
 dn: ou=Groupes,dc=cmc,dc=agadir
 objectClass: organizationalUnit
 ou: Groupes
+```
+
+```bash
 ldapadd -x -D "cn=Manager,dc=cmc,dc=agadir" -W -f base.ldif
-Phase 7 : Ajout d'un groupe et d'un utilisateur
+```
+
+---
+
+### Phase 7 : Ajout d'un groupe et d'utilisateurs
+
+```bash
 nano utilisateur.ldif
-# 1. Création du groupe
+```
+
+```ldif
+# 1. Groupe
 dn: cn=IDOSR-2026,ou=Groupes,dc=cmc,dc=agadir
 objectClass: posixGroup
 cn: IDOSR-2026
@@ -147,18 +249,42 @@ gidNumber: 2000
 userPassword: {SSHA}c2lcJG2wttgFNC6eNrUSZzHK299XPUCb
 loginShell: /bin/bash
 homeDirectory: /home/y.barbach
+```
+
+```bash
 ldapadd -x -D "cn=Manager,dc=cmc,dc=agadir" -W -f utilisateurs.ldif
-Test ultime : recherche LDAP
+```
+
+#### Test LDAP
+
+```bash
 ldapsearch -x -b "dc=cmc,dc=agadir" "(objectClass=inetOrgPerson)"
-Phase 8 : Installation de l'interface web (phpLDAPadmin)
+```
+
+---
+
+### Phase 8 : Installation de phpLDAPadmin
+
+```bash
 sudo dnf install httpd php php-ldap php-xml -y
 sudo systemctl enable --now httpd
 sudo dnf install epel-release -y
 sudo dnf install phpldapadmin -y
 sudo systemctl stop firewalld
-Phase 9 : Configuration de phpLDAPadmin
-Modifier le fichier
+```
+
+---
+
+### Phase 9 : Configuration de phpLDAPadmin
+
+```bash
 sudo nano /etc/phpldapadmin/config.php
+```
+
+Ou :
+
+```bash
+sudo tee /etc/phpldapadmin/config.php > /dev/null << 'EOF'
 <?php
 $servers = new Datastore();
 $servers->newServer('ldap_pla');
@@ -170,60 +296,49 @@ $servers->setValue('login','auth_type','cookie');
 $servers->setValue('login','bind_id','cn=Manager,dc=cmc,dc=agadir');
 $servers->setValue('server','tls',false);
 ?>
-Modification du fichier interne
+EOF
+```
+
+```bash
 sudo nano +208 /usr/share/phpldapadmin/lib/ds_ldap.php
+```
 
-Remplacer par :
-
+```php
 if ($this->getValue('server','port'))
     $resource = @ldap_connect("ldap://" . $this->getValue('server','host') . ":" . $this->getValue('server','port'));
 else
     $resource = @ldap_connect("ldap://" . $this->getValue('server','host'));
-Autoriser l'accès réseau
+```
 
-Remplacer :
+Modifier :
 
-Require local
+```
+Require local → Require all granted
+```
 
-par :
-
-Require all granted
-SELinux
+```bash
 sudo setsebool -P httpd_can_connect_ldap on
 sudo systemctl restart httpd
-Étape 1 : Première connexion
+```
 
-Naviguer vers :
+---
 
-http://192.168.85.144/phpldapadmin
-Cliquer sur Connexion
-Identifiant : cn=Manager,dc=cmc,dc=agadir
-Mot de passe administrateur
+## Partie 2 : Client (Mint / Ubuntu)
 
-Vous verrez l’arborescence avec :
+### Phase 4 : Installation SSSD
 
-dc=cmc
-ou=Groupes
-ou=Utilisateurs
-Création via interface web
-Groupe
-ou=Groupes → Créer une nouvelle entrée → Generic: Posix Group
-Group Name : Reseaux
-GID Number : 2000
-Utilisateur
-ou=Utilisateurs → Generic: User Account
-Nom : Mohamed Naittaouel
-UID : m.naittaouel
-Password : simple
-UID Number : 2000
-GID : 2000
-Home : /home/m.naittaouel
-Client (Mint / Ubuntu)
-Phase 4 : Installation SSSD
+```bash
 sudo apt update
 sudo apt install sssd libnss-sss libpam-sss ldap-utils -y
-Phase 5 : Configuration
+```
+
+### Phase 5 : Configuration
+
+```bash
 sudo nano /etc/sssd/sssd.conf
+```
+
+```ini
 [sssd]
 config_file_version = 2
 services = nss, pam
@@ -240,42 +355,110 @@ ldap_auth_disable_tls_never_use_in_production = true
 
 cache_credentials = true
 enumerate = true
-Phase 6 : Activation
+```
+
+### Phase 6 : Activation
+
+```bash
 sudo chmod 600 /etc/sssd/sssd.conf
 sudo systemctl restart sssd
 sudo systemctl enable sssd
-Phase 7 : Dossier personnel
+```
+
+### Phase 7 : Home automatique
+
+```bash
 sudo pam-auth-update --enable mkhomedir
-Test
+```
+
+### Test
+
+```bash
 id m.naittaouel
 sudo systemctl restart sssd
 su - m.naittaouel
-Configuration NFS
-Serveur
+```
+
+---
+
+## Partie 3 : NFS
+
+### Serveur
+
+```bash
 sudo dnf install nfs-utils -y
 sudo systemctl enable --now nfs-server
 sudo mkdir -p /export/home
 sudo chmod 777 /export/home
-Partage
+```
+
+### Client
+
+```bash
+sudo mkdir -p /home/reseau
+sudo nano /etc/fstab
+```
+
+```
+192.168.85.139:/export/home /home/reseau nfs defaults 0 0
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo mount -a
+```
+
+---
+
+### Partage avancé
+
+#### Serveur
+
+```bash
 sudo mkdir -p /export/atmani_share
 sudo chgrp 2000 /export/atmani_share
 sudo chmod 2777 /export/atmani_share
 sudo nano /etc/exports
+```
+
+```
 /export/atmani_share 192.168.85.0/24(rw,sync,no_root_squash)
+```
+
+```bash
 sudo exportfs -arv
 sudo systemctl restart nfs-server
-Client NFS
+```
+
+#### Client
+
+```bash
 sudo umount /home/reseau
 sudo mkdir -p /home/reseau/atmani_share
 sudo nano /etc/fstab
+```
+
+```
 192.168.85.144:/export/atmani_share /home/reseau/atmani_share nfs defaults 0 0
+```
+
+```bash
 sudo systemctl daemon-reload
 sudo mount -a
-Migration utilisateur
+```
+
+---
+
+## Migration utilisateur
+
+```bash
 sudo useradd a.ouahnayn
 sudo passwd a.ouahnayn
 grep hassan /etc/passwd
 nano asmae.ldif
+```
+
+```ldif
 dn: uid=a.ouahnayn,ou=utilisateurs,dc=cmc,dc=agadir
 objectClass: inetOrgPerson
 objectClass: posixAccount
@@ -290,5 +473,20 @@ gidNumber: 2000
 userPassword: Admin123
 loginShell: /bin/bash
 homeDirectory: /export/home/a.ouahnayn
+```
+
+```bash
 sudo apt install ldap-utils -y
 ldapadd -x -H ldap://192.168.85.144 -D "cn=Manager,dc=cmc,dc=agadir" -W -f asmae.ldif
+```
+
+---
+
+```
+
+---
+
+Si tu veux, je peux aussi te générer :
+- un **README GitHub professionnel (avec badges + sommaire + schémas)**  
+- ou une **version PDF propre (style rapport)**
+```
