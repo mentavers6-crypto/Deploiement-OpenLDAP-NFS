@@ -252,7 +252,7 @@ homeDirectory: /home/y.barbach
 ```
 
 ```bash
-ldapadd -x -D "cn=Manager,dc=cmc,dc=agadir" -W -f utilisateurs.ldif
+ldapadd -x -D "cn=Manager,dc=cmc,dc=agadir" -W -f utilisateur.ldif
 ```
 
 #### Test LDAP
@@ -309,7 +309,10 @@ if ($this->getValue('server','port'))
 else
     $resource = @ldap_connect("ldap://" . $this->getValue('server','host'));
 ```
-
+### Autoriser l'accès réseau à l'interface web
+```bash
+sudo nano /etc/httpd/conf.d/phpldapadmin.conf
+```
 Modifier :
 
 ```
