@@ -466,7 +466,7 @@ sudo mount -a
 ```bash
 sudo useradd a.ouahnayn
 sudo passwd a.ouahnayn
-grep hassan /etc/passwd
+grep a.ouahnayn /etc/passwd
 nano asmae.ldif
 ```
 
@@ -493,8 +493,6 @@ ldapadd -x -H ldap://192.168.85.144 -D "cn=Manager,dc=cmc,dc=agadir" -W -f asmae
 ```
 
 ---
-
-```
 ---
 
 # Accès au partage réseau (NFS) via une machine Windows 10
