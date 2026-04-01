@@ -495,10 +495,66 @@ ldapadd -x -H ldap://192.168.85.144 -D "cn=Manager,dc=cmc,dc=agadir" -W -f asmae
 ---
 
 ```
+---
+
+# Accès au partage réseau (NFS) via une machine Windows 10
+
+Ce guide explique comment accéder au dossier partagé (NFS) depuis un client Windows 10.
+
+## 1. Activer les outils NFS cachés dans Windows
+
+Par défaut, Windows 10 n'active pas le client NFS. Voici comment l'activer :
+
+1. Sur votre machine Windows 10, cliquez sur le bouton **Démarrer**, tapez **Panneau de configuration** (*Control Panel*), puis ouvrez-le.
+2. Allez dans la section **Programmes** (ou **Programmes et fonctionnalités**).
+3. Sur le panneau de gauche, cliquez sur le lien **Activer ou désactiver des fonctionnalités Windows**.
+4. Une petite fenêtre contenant une liste va s'ouvrir. Descendez jusqu'à trouver le dossier nommé **Services pour NFS** (*Services for NFS*).
+5. Développez ce dossier (en cliquant sur le petit "+") et cochez la case **Client pour NFS** (*Client for NFS*).
+6. Cliquez sur **OK** et patientez pendant que Windows applique les modifications.
+
+## 2. Préparation et configuration des pare-feux
+
+> **⚠️ Prérequis Windows :** Pour réussir cette opération, vous devez désactiver (temporairement ou configurer) le pare-feu sur votre machine Windows.
+
+Sur votre **serveur Fedora**, vous devez autoriser le trafic NFS de manière permanente. Envoyez les commandes suivantes :
+
+```bash
+sudo firewall-cmd --add-service=nfs --permanent
+sudo firewall-cmd --add-service=rpc-bind --permanent
+sudo firewall-cmd --add-service=mountd --permanent
+sudo firewall-cmd --reload
+```
+
+````markdown
+## 3. Le Montage et test de visibilité (Sur Windows)
+
+Ouvrez l'Invite de commandes Windows (`cmd`) et exécutez les étapes suivantes :
+
+### 🔍 Test de visibilité
+
+Vérifiez que votre machine Windows "voit" bien les dossiers partagés par le serveur Fedora :
+
+```dos
+showmount -e 192.168.85.144
+````
+
+### 🔗 Le montage
+
+Connectez le dossier réseau à votre machine en lui attribuant une lettre de lecteur (par exemple, `Z:`) :
+
+```dos
+mount -o anon,mtype=hard \\192.168.85.144\export\atmani_share Z:
+```
 
 ---
 
-Si tu veux, je peux aussi te générer :
-- un **README GitHub professionnel (avec badges + sommaire + schémas)**  
-- ou une **version PDF propre (style rapport)**
+## 4. Validation finale
+
+Maintenant, ouvrez votre Explorateur de fichiers Windows.
+
+Dans la section **Réseau** (ou dans **Ce PC**), vous allez trouver votre partage réseau monté et prêt à être utilisé.
+
 ```
+
+```
+
